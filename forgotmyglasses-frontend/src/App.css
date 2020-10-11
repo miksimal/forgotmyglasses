@@ -1,0 +1,15 @@
+.App {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+.App-header {
+  font-size: calc(10px + 1.5vmin);
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+li {
+  margin-top: 20px;
+}
