@@ -1,5 +1,6 @@
 {
-  "name": "recognition-app",
+  "name": "forgotmyglasses",
+  "homepage": "https://forgotmyglasses.miksimal.com",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -12,6 +13,7 @@
     "@types/react-dom": "^16.9.8",
     "@types/uuid": "^8.3.0",
     "aws-sdk": "^2.768.0",
+    "gh-pages": "^3.1.0",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "react-scripts": "3.4.3",
@@ -19,6 +21,8 @@
     "uuid": "^8.3.1"
   },
   "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
