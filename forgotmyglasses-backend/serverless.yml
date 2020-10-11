@@ -1,0 +1,80 @@
+service: recognition-app-backend
+
+package:
+  individually: true
+
+plugins:
+  - serverless-bundle
+  - serverless-offline
+
+custom:
+  stage: ${opt:stage, self:provider.stage}
+
+provider:
+  name: aws
+  runtime: nodejs10.x
+  stage: prod
+  region: eu-west-1
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - rekognition:DeleteCollection
+        - rekognition:ListCollections
+        - lambda:InvokeFunction
+      Resource: '*'
+functions:
+  cleanup:
+    handler: handler.cleanup
+    events:
+      - schedule:
+          name: rekognition-invoke-every-day-at-11am
+          description: 'invokes the Lambda that deletes rekognition collections'
+          rate: cron(0 11 * * ? *)
+
+resources:
+  Resources:
+    CognitoIdentityPool:
+      Type: AWS::Cognito::IdentityPool
+      Properties:
+        IdentityPoolName: ${self:custom.stage}-${self:service}-identity-pool
+        AllowUnauthenticatedIdentities: true
+              
+    CognitoIdentityPoolRoles:
+      Type: AWS::Cognito::IdentityPoolRoleAttachment
+      Properties:
+        IdentityPoolId:
+          Ref: CognitoIdentityPool
+        Roles:
+          unauthenticated:
+            Fn::GetAtt: [CognitoUnAuthRole, Arn]
+            
+    CognitoUnAuthRole:
+      Type: AWS::IAM::Role
+      Properties:
+        Path: /
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: 'Allow'
+              Principal:
+                Federated: 'cognito-identity.amazonaws.com'
+              Action:
+                - 'sts:AssumeRoleWithWebIdentity'
+              Condition:
+                StringEquals:
+                  'cognito-identity.amazonaws.com:aud':
+                    Ref: CognitoIdentityPool
+                'ForAnyValue:StringLike':
+                  'cognito-identity.amazonaws.com:amr': unauthenticated
+        Policies:
+          - PolicyName: 'CognitoAuthorizedPolicy'
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: 'Allow'
+                  Action:
+                    - 'rekognition:CreateCollection'
+                    - 'rekognition:IndexFaces'
+                    - 'rekognition:DeleteCollection'
+                    - 'rekognition:SearchFacesByImage'
+                  Resource: '*'
