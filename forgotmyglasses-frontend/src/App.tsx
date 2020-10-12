@@ -3,12 +3,10 @@
 import React, { useState, ChangeEvent, } from "react";
 import './App.css';
 import { v4 as uuidv4 } from 'uuid';
-import Rekognition, { IndexFacesRequest, SearchFacesByImageRequest, DeleteCollectionRequest } from "aws-sdk/clients/rekognition";
+import AWS from 'aws-sdk';
+import Rekognition, { CreateCollectionRequest, IndexFacesRequest, SearchFacesByImageRequest } from "aws-sdk/clients/rekognition";
 
-const AWS = require('aws-sdk');
-
-// Initialize the Amazon Cognito credentials provider
-AWS.config.region = 'eu-west-1'; // Region
+AWS.config.region = 'eu-west-1';
 AWS.config.credentials = new AWS.CognitoIdentityCredentials({
     IdentityPoolId: 'eu-west-1:4a8f8cca-1fe0-4ce5-843c-3118a21061f6',
 });
@@ -20,11 +18,12 @@ function App() {
   const [aboutToStart, setAboutToStart] = useState(true);
   const [trainingTheRobot, setTrainingTheRobot] = useState(false);
   const [robotIsReady, setRobotIsReady] = useState(false);
+  const [facesInCollectionCount, setFacesInCollectionCount] = useState(0);
 
   async function createCollection() {
     setIsLoading(true);
     try {
-      const params = {
+      const params: CreateCollectionRequest = {
         CollectionId: collectionId
        };
       await rekog.createCollection(params).promise();
@@ -34,11 +33,6 @@ function App() {
     } catch (e) {
       console.log(e.message);
     }
-  }
-
-  async function listCollections() {
-    const collections = await rekog.listCollections({}).promise();
-    console.log(JSON.stringify(collections,null,2));
   }
 
   function readFileAsync(file: Blob): Promise<string | ArrayBuffer | null> {
@@ -67,20 +61,20 @@ function App() {
         CollectionId: collectionId,
         Image: {
           Bytes: buffer
-        },
-        MaxFaces: 1,
+        }
       };
       const result: Rekognition.IndexFacesResponse  = await rekog.indexFaces(params).promise();
-      if (result.UnindexedFaces?.length != null && result.UnindexedFaces?.length > 0) {
-        // throw new Error(result.UnindexedFaces?.length + 1 + ' faces were identified - please add a photo with only one face');
+      if (result.FaceRecords && result.FaceRecords.length === 0) {
+        window.alert('Woops, no face was registered in that photo. Can you try a different one?');
+      } else {
+        setRobotIsReady(true);
+        setFacesInCollectionCount(facesInCollectionCount + 1);
+        ((document.getElementById("uploadTrainingPhoto")) as HTMLInputElement).value = "";
       }
-      setRobotIsReady(true);
-      setIsLoading(false);
     } catch (e) {
       console.log(e.message);
-      setIsLoading(false);
-      // if e message is that theres more than 1 face, let the user know
     }
+    setIsLoading(false);
   }
 
   async function searchFace(e: ChangeEvent<HTMLInputElement>) {
@@ -102,6 +96,7 @@ function App() {
       if (result.FaceMatches?.length == 0) {
         window.alert('This is definitely not your friend. Abort!')
         setIsLoading(false);
+        ((document.getElementById("uploadFriendPhoto")) as HTMLInputElement).value = "";
         return;
       }
       if (result.FaceMatches[0]) {
@@ -113,7 +108,7 @@ function App() {
             message = 'This is probably not your friend (less than 50% similarity)';
             break;
           case (similarity < 75):
-            message = 'This could be, but probability is not, your friend (less than 75% similarity) - worth a go?'
+            message = 'This could be, but probably is not, your friend (less than 75% similarity) - worth a go?'
             break;
           case (similarity < 90):
             message = 'This is probably your friend (greater than 75% similarity)! Say hello!'
@@ -128,32 +123,46 @@ function App() {
             message = 'Something went wrong, sorry!';
         }
         window.alert(message);
+        ((document.getElementById("uploadFriendPhoto")) as HTMLInputElement).value = "";
       }
     } catch (e) {
       console.log(e.message);
       setIsLoading(false);
-      // if e message is that theres more than 1 face, let the user know
+      ((document.getElementById("uploadFriendPhoto")) as HTMLInputElement).value = "";
+    }
+  }
+
+  function renderHeadingForTrainingPhotoUpload() {
+    if (facesInCollectionCount === 0) {
+      return <><h2>Provide a photo of at least one friend.</h2><p>To add multiple friends, upload multiple photos or a group photo (up to 100 faces per photo).</p></>
+    }
+    else if (facesInCollectionCount > 0 && facesInCollectionCount < 2) {
+      return <h2>One photo added 🎉 You can now try the friend-checker below or add more photos.</h2>
+    }
+    else {
+      return <h2>{facesInCollectionCount} photos added 🎉 You can now try the friend-checker below or add more photos.</h2>
     }
   }
 
   function renderTrainingPhotoUpload() {
     return (
       <div>
-        <h2>Provide at least one photo of your friend (the more the better)</h2>
-        <p>Note: we do not store your photos. Instead, facial features are analysed and those are what is used to recognise similarities. Your collection of data will be deleted automatically within 24 hours.</p>
-        <input onChange={indexFace} type="file" accept="image/*" capture="camera"></input>
-        <input onChange={indexFace} type="file" accept="image/*" capture="camera"></input>
-        <input onChange={indexFace} type="file" accept="image/*" capture="camera"></input>
+        {renderHeadingForTrainingPhotoUpload()}
+        <input id="uploadTrainingPhoto" onChange={indexFace} type="file" accept="image/*" capture="camera"></input>
       </div>
     )
   }
-  // https://medium.com/better-programming/handling-file-inputs-with-javascript-9f2d3a007f05 ; https://tympanus.net/codrops/2015/09/15/styling-customizing-file-inputs-smart-way/ - make nicer looking drop areas and filepicker
+  // Styling TODO:
+  // nicer looking photo inputs https://medium.com/better-programming/handling-file-inputs-with-javascript-9f2d3a007f05 ; https://tympanus.net/codrops/2015/09/15/styling-customizing-file-inputs-smart-way/ - make nicer looking drop areas and filepicker
+  // add spinners for loading states
+  // add nicer modal instead of window alert?
+  // simple favicon that's not the react one :)
 
   return (
     <div className="App">
       <header className="App-header">
         <h2>
-          Ever forget your glasses and fail to recognise your friend? 🤦‍♀️
+          Ever forget your glasses and fail to recognise a friend? 🤦‍♀️
         </h2>
         <h3>
           No? But <i>what if!?</i> Keep calm and use this robot to help you recognise them 👀
@@ -162,10 +171,10 @@ function App() {
           Simply:
           <ul>
             <li>
-              <b>Teach the robot</b> by uploading a few photos of your friend's face 📸
+              <b>Teach the robot</b> by uploading photos of your friends 📸
             </li>
             <li>
-              <b>Use your new cyborg skill</b> by subtly snapping a photo of their face and we'll tell you if it's your friend! 👋
+              <b>Ask the robot if someone is your friend</b> by quickly snapping a photo 👋
             </li>
           </ul>
         </p>
@@ -173,18 +182,19 @@ function App() {
       <body>
         {aboutToStart &&
           <div>
-            <h2>Ready to get started?!</h2>
+            <h2>Ready to get started?</h2>
             <button onClick={createCollection}>Yes!</button>
-            <button onClick={listCollections}>list!</button>
           </div>
         }
         {trainingTheRobot && renderTrainingPhotoUpload()}
         {robotIsReady &&
           <div>
-          <h2>The robot has been trained! Snap a photo of your 'friend' and we'll tell you if it's your friend</h2>
-          <input onChange={searchFace} type="file" accept="image/*" capture="camera"></input>
+            <h2>Friend-checker. Snap a photo of your 'friend' and I'll tell you if it's your friend</h2>
+            <p>If more than one person is present in the photo, the largest face will be used for the comparison</p>
+            <input id="uploadFriendPhoto" onChange={searchFace} type="file" accept="image/*" capture="camera"></input>
           </div>
         }
+        {!aboutToStart && <p>Note: I do not store your photos. Facial features from the training photos are extracted and stored for a maximum of 24 hours. Your data will be used only by you. Nothing is stored from photos uploaded for friend-checking.</p>}
       </body>
     </div>
   );
