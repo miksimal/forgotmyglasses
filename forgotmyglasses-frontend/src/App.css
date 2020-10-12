@@ -1,15 +1,47 @@
 .App {
   padding-left: 20px;
   padding-right: 20px;
+  padding-top: 20px;
+  max-width: 800px;
 }
 .App-header {
-  font-size: calc(10px + 1.5vmin);
+  font-size: calc(10px + 1.2vmin);
+  margin-bottom: 40px;
+}
+
+.App-header > h4 {
+  color: #cacacafb;
 }
 
 .App-link {
   color: #61dafb;
 }
 
+.FriendChecker {
+  margin-top: 40px;
+}
+.Disclaimer {
+  margin-top: 20px;
+}
+
 li {
   margin-top: 20px;
+}
+
+#uploadTrainingPhoto {
+  display: none;
+}
+
+#dropbox {
+  display:flex;
+  align-items: center;
+  justify-content: space-evenly;
+  width: 200px;
+  height: 75px;
+  background-color:#383e49;
+  cursor: pointer;
+}
+.TextWithinUploadBox {
+  display: flex;
+  flex-direction: column;
 }
