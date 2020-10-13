@@ -72,19 +72,18 @@ function App() {
       } else {
         setRobotIsReady(true);
         setFacesInCollectionCount(facesInCollectionCount + 1);
-        ((document.getElementById("uploadTrainingPhoto")) as HTMLInputElement).value = "";
       }
     } catch (e) {
       console.log(e.message);
     }
     setTrainingUploadIsLoading(false);
+    ((document.getElementById("uploadTrainingPhoto")) as HTMLInputElement).value = "";
   }
 
-  async function searchFace(e: ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files ? e.target.files : [new Blob()];
+  async function searchFace(file: Blob) {
     setFriendCheckerUploadIsLoading(true);
     try {
-      const buffer = await readFileAsync(files[0]);
+      const buffer = await readFileAsync(file);
       if (buffer == null) throw new Error('Error reading file');
 
       const params: SearchFacesByImageRequest = {
@@ -126,13 +125,12 @@ function App() {
             message = 'Something went wrong, sorry!';
         }
         window.alert(message);
-        ((document.getElementById("uploadFriendPhoto")) as HTMLInputElement).value = "";
       }
     } catch (e) {
       console.log(e.message);
-      setFriendCheckerUploadIsLoading(false);
-      ((document.getElementById("uploadFriendPhoto")) as HTMLInputElement).value = "";
     }
+    ((document.getElementById("uploadFriendPhoto")) as HTMLInputElement).value = "";
+    setFriendCheckerUploadIsLoading(false);
   }
 
   function renderHeadingForTrainingPhotoUpload() {
@@ -140,10 +138,10 @@ function App() {
       return <><h2>Provide a photo of at least one friend.</h2><p>A photo may contain up to 100 faces.</p></>
     }
     else if (facesInCollectionCount > 0 && facesInCollectionCount < 2) {
-      return <h2>One photo added 🎉 You can now try the friend-checker below or add more photos.</h2>
+      return <><h2>One photo added 🎉</h2><p>Add more photos or scroll down to try the friend-checker!</p></>
     }
     else {
-      return <h2>{facesInCollectionCount} photos added 🎉 You can now try the friend-checker below or add more photos.</h2>
+      return <><h2>{facesInCollectionCount} photos added 🎉</h2><p>Add more photos or scroll down to try the friend-checker!</p></>
     }
   }
 
@@ -168,11 +166,12 @@ function App() {
         <input id="uploadTrainingPhoto" onChange={(e) => {const file = e.target.files ? e.target.files[0] : new Blob(); indexFace(file)}} type="file" accept="image/*" capture="camera"></input>
         {trainingUploadIsLoading ? <Spinner animation="border"></Spinner> :
           <div 
-            id="dropbox"
+            id="trainingPhotoDropArea"
             onClick={() => ((document.getElementById("uploadTrainingPhoto")) as HTMLInputElement).click()}
-            onDragEnter={(e) => {e.stopPropagation(); e.preventDefault();}}
-            onDragOver={(e) => {e.stopPropagation(); e.preventDefault();}}
-            onDrop={(e) => {e.stopPropagation(); e.preventDefault(); indexFaceBasedOnDropEvent(e);}}
+            onDragEnter={(e) => {e.stopPropagation(); e.preventDefault(); addHighlight("trainingPhotoDropArea");}}
+            onDragOver={(e) => {e.stopPropagation(); e.preventDefault(); addHighlight("trainingPhotoDropArea");}}
+            onDragLeave={(e) => {e.stopPropagation(); e.preventDefault(); removeHighlight("trainingPhotoDropArea");}}
+            onDrop={(e) => {e.stopPropagation(); e.preventDefault(); removeHighlight("trainingPhotoDropArea"); indexFaceBasedOnDropEvent(e);}}
           >
             <FontAwesomeIcon className="PlusIcon" color={"#61dafb"} icon={faPlus} size={"3x"} />
             <div className="TextWithinUploadBox">
@@ -185,12 +184,45 @@ function App() {
       </div>
     )
   }
+
+  function addHighlight(elementId: string) {
+    const dropbox = (document.getElementById(elementId)) as HTMLDivElement;
+    dropbox.classList.add('highlight');
+  }
+
+  function removeHighlight(elementId: string) {
+    const dropbox = (document.getElementById(elementId)) as HTMLDivElement;
+    dropbox.classList.remove('highlight');
+  }
+
+  function searchFaceBasedOnDropEvent(e: React.DragEvent<HTMLDivElement>) {
+    const files = e.dataTransfer.files;
+    if (files.length > 1) {
+      window.alert("Sorry, only one image at at time please");
+      return;
+    }
+    const file = files[0];
+    if (!file.type.startsWith("image")) {
+      window.alert("File must be an image");
+      return;
+    }
+    searchFace(file);
+  }
+
   // Styling TODO:
   // add spinners for loading states. Done.
+  // simple favicon that's not the react one. Done.
+
   // nicer looking photo inputs https://medium.com/better-programming/handling-file-inputs-with-javascript-9f2d3a007f05 ; https://tympanus.net/codrops/2015/09/15/styling-customizing-file-inputs-smart-way/ - make nicer looking drop areas and filepicker
-  // add nicer modal or other way to provide the results instead of window alert?
-  // simple favicon that's not the react one :)
+  // This is great: https://www.smashingmagazine.com/2018/01/drag-drop-file-uploader-vanilla-js/
+  // For the photo input: add some kind of animation when you drag file over it. DONE
+  // for the photo input, change colour slightly when you hover with cursor (lighter colour)
+  // Display gallery of uploaded photos using FileReader API
   // fix ugly grey in subheading
+  // add nicer modal or other way to provide the results instead of window alert?
+
+  // Other TODO:
+  // check for max file size exceeded
 
   return (
     <div className="App">
@@ -213,16 +245,30 @@ function App() {
       <body>
         {aboutToStart &&
           <div>
-            <Button size="lg" onClick={createCollection}>Amazing, let's do it! 🔥</Button>
+            <Button variant="secondary" size="lg" block onClick={createCollection}>Let's do it! 🔥</Button>
           </div>
         }
         {trainingTheRobot && renderTrainingPhotoUpload()}
         {robotIsReady &&
           <div className="FriendChecker">
-            <h2>Friend-checker. Snap a photo of your 'friend' and I'll tell you if it's your friend</h2>
+            <h2>Friend-checker: Snap a photo of your 'friend' 📸</h2>
             <p>If more than one person is present in the photo, the largest face will be used for the comparison</p>
+            <input id="uploadFriendPhoto" onChange={(e) => {const file = e.target.files ? e.target.files[0] : new Blob(); searchFace(file)}} type="file" accept="image/*" capture="camera"></input>
             {friendCheckerUploadIsLoading ? <Spinner animation="border"></Spinner> :
-              <input id="uploadFriendPhoto" onChange={searchFace} type="file" accept="image/*" capture="camera"></input>
+                <div 
+                id="friendCheckerDropArea"
+                onClick={() => ((document.getElementById("uploadFriendPhoto")) as HTMLInputElement).click()}
+                onDragEnter={(e) => {e.stopPropagation(); e.preventDefault(); addHighlight("friendCheckerDropArea");}}
+                onDragOver={(e) => {e.stopPropagation(); e.preventDefault(); addHighlight("friendCheckerDropArea");}}
+                onDragLeave={(e) => {e.stopPropagation(); e.preventDefault(); removeHighlight("friendCheckerDropArea");}}
+                onDrop={(e) => {e.stopPropagation(); e.preventDefault(); removeHighlight("friendCheckerDropArea"); searchFaceBasedOnDropEvent(e);}}
+              >
+                <FontAwesomeIcon className="PlusIcon" color={"#61dafb"} icon={faPlus} size={"3x"} />
+                <div className="TextWithinUploadBox">
+                  <span>Drag & drop</span>
+                  <span>or click to upload</span>
+                </div>
+              </div>
             }
           </div>
         }

@@ -10,7 +10,7 @@
 }
 
 .App-header > h4 {
-  color: #cacacafb;
+  color: #d1d7e7;
 }
 
 .App-link {
@@ -32,7 +32,11 @@ li {
   display: none;
 }
 
-#dropbox {
+#uploadFriendPhoto {
+  display: none;
+}
+
+#trainingPhotoDropArea, #friendCheckerDropArea {
   display:flex;
   align-items: center;
   justify-content: space-evenly;
@@ -40,8 +44,13 @@ li {
   height: 75px;
   background-color:#383e49;
   cursor: pointer;
+  border-radius: 10px;
 }
 .TextWithinUploadBox {
   display: flex;
   flex-direction: column;
+}
+
+.highlight {
+  border: 2px dashed #61dafb;
 }
