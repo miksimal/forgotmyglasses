@@ -46,6 +46,12 @@ li {
   cursor: pointer;
   border-radius: 10px;
 }
+
+#trainingPhotoDropArea:hover, #friendCheckerDropArea:hover {
+  background-color:#404755;
+}
+
+
 .TextWithinUploadBox {
   display: flex;
   flex-direction: column;

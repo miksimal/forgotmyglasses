@@ -1,11 +1,10 @@
 /// <reference types="aws-sdk" />
 
-import React, { useState, ChangeEvent, } from "react";
+import React, { useState, useEffect } from "react";
 import './App.css';
 import { v4 as uuidv4 } from 'uuid';
 import AWS from 'aws-sdk';
 import Rekognition, { CreateCollectionRequest, IndexFacesRequest, SearchFacesByImageRequest } from "aws-sdk/clients/rekognition";
-import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faPlus } from '@fortawesome/free-solid-svg-icons'
@@ -19,25 +18,30 @@ const rekog: AWS.Rekognition = new AWS.Rekognition();
 function App() {
   const [trainingUploadIsLoading, setTrainingUploadIsLoading] = useState(false);
   const [friendCheckerUploadIsLoading, setFriendCheckerUploadIsLoading] = useState(false);
-  const [collectionId, setCollectionId] = useState<string>(uuidv4());
-  const [aboutToStart, setAboutToStart] = useState(true);
-  const [trainingTheRobot, setTrainingTheRobot] = useState(false);
+  const [collectionId, setCollectionId] = useState<string>("");
+  const [isCreatingCollection, setIsCreatingCollection] = useState(true);
   const [robotIsReady, setRobotIsReady] = useState(false);
   const [facesInCollectionCount, setFacesInCollectionCount] = useState(0);
 
-  async function createCollection() {
-    try {
-      const params: CreateCollectionRequest = {
-        CollectionId: collectionId
-       };
-      await rekog.createCollection(params).promise();
-      setCollectionId(collectionId);
-      setAboutToStart(false);
-      setTrainingTheRobot(true);
-    } catch (e) {
-      console.log(e.message);
-    }
-  }
+  useEffect(() => {
+    async function createCollection() {
+      const id = uuidv4();
+      setCollectionId(id);
+      setIsCreatingCollection(true);
+      try {
+        const params: CreateCollectionRequest = {
+          CollectionId: id
+         };
+        await rekog.createCollection(params).promise();
+      } catch (e) {
+        console.log(e.message);
+        window.alert("Sorry, something went wrong. Please refresh the page");
+      }
+      setIsCreatingCollection(false);
+    };
+
+    createCollection();
+  }, []);
 
   function readFileAsync(file: Blob): Promise<string | ArrayBuffer | null> {
     return new Promise((resolve, reject) => {
@@ -72,6 +76,7 @@ function App() {
       } else {
         setRobotIsReady(true);
         setFacesInCollectionCount(facesInCollectionCount + 1);
+        ((document.getElementById("friendCheckerDropArea")) as HTMLDivElement).scrollIntoView(true);
       }
     } catch (e) {
       console.log(e.message);
@@ -95,7 +100,7 @@ function App() {
       };
       const result: Rekognition.SearchFacesByImageResponse  = await rekog.searchFacesByImage(params).promise();
       if (!result.FaceMatches) return;
-      if (result.FaceMatches?.length == 0) {
+      if (result.FaceMatches?.length === 0) {
         window.alert('This is definitely not your friend. Abort!')
         setFriendCheckerUploadIsLoading(false);
         ((document.getElementById("uploadFriendPhoto")) as HTMLInputElement).value = "";
@@ -180,7 +185,6 @@ function App() {
             </div>
           </div>
         }
-
       </div>
     )
   }
@@ -209,21 +213,6 @@ function App() {
     searchFace(file);
   }
 
-  // Styling TODO:
-  // add spinners for loading states. Done.
-  // simple favicon that's not the react one. Done.
-
-  // nicer looking photo inputs https://medium.com/better-programming/handling-file-inputs-with-javascript-9f2d3a007f05 ; https://tympanus.net/codrops/2015/09/15/styling-customizing-file-inputs-smart-way/ - make nicer looking drop areas and filepicker
-  // This is great: https://www.smashingmagazine.com/2018/01/drag-drop-file-uploader-vanilla-js/
-  // For the photo input: add some kind of animation when you drag file over it. DONE
-  // for the photo input, change colour slightly when you hover with cursor (lighter colour)
-  // Display gallery of uploaded photos using FileReader API
-  // fix ugly grey in subheading
-  // add nicer modal or other way to provide the results instead of window alert?
-
-  // Other TODO:
-  // check for max file size exceeded
-
   return (
     <div className="App">
       <header className="App-header">
@@ -242,20 +231,15 @@ function App() {
             </li>
           </ul>
       </header>
-      <body>
-        {aboutToStart &&
-          <div>
-            <Button variant="secondary" size="lg" block onClick={createCollection}>Let's do it! 🔥</Button>
-          </div>
-        }
-        {trainingTheRobot && renderTrainingPhotoUpload()}
+      <div>
+        {isCreatingCollection ? <Spinner animation="border"></Spinner> : renderTrainingPhotoUpload()}
         {robotIsReady &&
           <div className="FriendChecker">
             <h2>Friend-checker: Snap a photo of your 'friend' 📸</h2>
-            <p>If more than one person is present in the photo, the largest face will be used for the comparison</p>
+            <p>If more than one person is present in the photo, the largest face will be used.</p>
             <input id="uploadFriendPhoto" onChange={(e) => {const file = e.target.files ? e.target.files[0] : new Blob(); searchFace(file)}} type="file" accept="image/*" capture="camera"></input>
             {friendCheckerUploadIsLoading ? <Spinner animation="border"></Spinner> :
-                <div 
+              <div 
                 id="friendCheckerDropArea"
                 onClick={() => ((document.getElementById("uploadFriendPhoto")) as HTMLInputElement).click()}
                 onDragEnter={(e) => {e.stopPropagation(); e.preventDefault(); addHighlight("friendCheckerDropArea");}}
@@ -272,8 +256,8 @@ function App() {
             }
           </div>
         }
-        {!aboutToStart && <p className="Disclaimer">Note: I do not store your photos. Facial features from the training photos are extracted and stored for a maximum of 24 hours. Your data will be used only by you. Nothing is stored from photos uploaded for friend-checking.</p>}
-      </body>
+        {!isCreatingCollection && <p className="Disclaimer">Note: extracted facial features from the training photos are stored for a maximum of 24 hours. Your data will be used only by you. For photos uploaded in the 'friend-checker' nothing is stored.</p>}
+      </div>
     </div>
   );
 }
