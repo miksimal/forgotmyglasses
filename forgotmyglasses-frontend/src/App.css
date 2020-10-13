@@ -1,15 +1,62 @@
 .App {
   padding-left: 20px;
   padding-right: 20px;
+  padding-top: 20px;
+  max-width: 800px;
 }
 .App-header {
-  font-size: calc(10px + 1.5vmin);
+  font-size: calc(10px + 1.2vmin);
+  margin-bottom: 40px;
+}
+
+.App-header > h4 {
+  color: #d1d7e7;
 }
 
 .App-link {
   color: #61dafb;
 }
 
+.FriendChecker {
+  margin-top: 40px;
+}
+.Disclaimer {
+  margin-top: 20px;
+}
+
 li {
   margin-top: 20px;
+}
+
+#uploadTrainingPhoto {
+  display: none;
+}
+
+#uploadFriendPhoto {
+  display: none;
+}
+
+#trainingPhotoDropArea, #friendCheckerDropArea {
+  display:flex;
+  align-items: center;
+  justify-content: space-evenly;
+  width: 200px;
+  height: 75px;
+  background-color:#383e49;
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+#trainingPhotoDropArea:hover, #friendCheckerDropArea:hover {
+  background-color:#404755;
+}
+
+
+.TextWithinUploadBox {
+  display: flex;
+  flex-direction: column;
+}
+
+.highlight {
+  border: 2px dashed #61dafb;
 }
